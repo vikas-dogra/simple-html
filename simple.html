@@ -1,32 +1,155 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
-    </head>
-    <body>
-        <div id="main">
-            <h3>This is my first widget.</h3>
-            <span id="labelText"></span>
-            <input type="text" id="userInput">
-        </div>
-        <script type="text/javascript">
-            //always subscribe to ready event and implement widget related code
-            //inside callback function , it is the best practice while developing widgets
-            JFCustomWidget.subscribe("ready", function(){
-                var label = JFCustomWidget.getWidgetSetting('QuestionLabel');
-                document.getElementById('labelText').innerHTML = label;
-                //subscribe to form submit event
-                JFCustomWidget.subscribe("submit", function(){
-                    var msg = {
-                        //you should valid attribute to data for JotForm
-                        //to be able to use youw widget as required
-                        valid: true,
-                        value: document.getElementById('userInput').value
-                    }
-                    // send value to JotForm
-                    JFCustomWidget.sendSubmit(msg);
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Capture Widget</title>
+    <!-- Include Jotform Custom Widget API -->
+    <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            margin: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Location Data</h3>
+        <label for="latitude">Latitude:</label>
+        <input type="text" id="latitude" readonly>
+
+        <label for="longitude">Longitude:</label>
+        <input type="text" id="longitude" readonly>
+
+        <label for="accuracy">Accuracy (meters):</label>
+        <input type="text" id="accuracy" readonly>
+
+        <button id="refresh-btn">Refresh to Improve Accuracy</button>
+    </div>
+
+    <!-- Async Custom Field API -->
+    <script type="text/javascript">
+        (function() {
+            var po = document.createElement('script');
+            po.type = 'text/javascript';
+            po.async = true;
+            po.src = '//js.jotform.com/JotFormCustomWidget.min.js?onload=onLoadCallback';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(po, s);
+        })();
+    </script>
+
+    <script>
+        let latitudeField = document.getElementById('latitude');
+        let longitudeField = document.getElementById('longitude');
+        let accuracyField = document.getElementById('accuracy');
+        let refreshButton = document.getElementById('refresh-btn');
+
+        // Function to get the location
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError, {
+                    enableHighAccuracy: true
                 });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        // Function to display position data and send it to hidden form fields
+        function showPosition(position) {
+            // Get the latitude, longitude, and accuracy values
+            let latitude = position.coords.latitude;
+            let longitude = position.coords.longitude;
+            let accuracy = position.coords.accuracy;
+
+            // Set the widget's input fields (for display purposes)
+            latitudeField.value = latitude;
+            longitudeField.value = longitude;
+            accuracyField.value = accuracy;
+
+            // Use JFCustomWidget to send values to the form (hidden fields)
+            JFCustomWidget.sendData({
+                "latitude": latitude,
+                "longitude": longitude,
+                "accuracy": accuracy
             });
-        </script>
-    </body>
+
+            // Update the hidden fields by Field IDs
+            document.querySelector("#input_39").value = latitude; // Latitude field
+            document.querySelector("#input_40").value = longitude; // Longitude field
+            document.querySelector("#input_41").value = accuracy; // Accuracy field
+        }
+
+        // Error handling for geolocation
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
+        }
+
+        // Event listener for refresh button
+        refreshButton.addEventListener('click', function() {
+            getLocation();
+        });
+
+        // Automatically get location when the widget loads
+        window.onload = function() {
+            getLocation();
+        };
+
+        // Jotform Widget onLoadCallback function
+        function onLoadCallback() {
+            JFCustomWidget.subscribe("ready", function() {
+                // Call getLocation when form is ready
+                getLocation();
+            });
+
+            JFCustomWidget.subscribe("submit", function() {
+                // Collect data for form submission
+                let result = {
+                    valid: true,
+                    value: {
+                        latitude: document.querySelector("#input_39").value,
+                        longitude: document.querySelector("#input_40").value,
+                        accuracy: document.querySelector("#input_41").value
+                    }
+                };
+                // Submit the data to Jotform
+                JFCustomWidget.sendSubmit(result);
+            });
+        }
+    </script>
+</body>
 </html>
